@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* Tailwind CSS v4 directive; suppress generic CSS linter warnings. */
+/* stylelint-disable-next-line at-rule-no-unknown */
 @custom-variant dark (&:where(.dark, .dark *));
 html {
   scroll-behavior: smooth;

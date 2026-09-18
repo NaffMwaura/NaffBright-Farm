@@ -1,0 +1,17 @@
+@backend_HostAddress = http://localhost:5160
+
+GET {{backend_HostAddress}}/api/cows
+Accept: application/json
+
+###
+
+POST {{backend_HostAddress}}/api/cows
+Content-Type: application/json
+
+{
+	"tagNumber": "NF-HF-202",
+	"breed": "Holstein-Friesian",
+	"dateOfBirth": "2023-04-15",
+	"sex": "Female",
+	"status": "Milking"
+}

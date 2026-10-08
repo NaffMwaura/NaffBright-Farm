@@ -22,15 +22,11 @@ public class AuthController : ControllerBase
         _tokenService = tokenService;
     }
 
-    /// <summary>
-    /// Authenticate user and issue JWT token
-    /// </summary>
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginRequestDto request)
     {
         var normalizedEmail = request.Email.Trim().ToLower();
 
-        // Query user with their assigned Role
         var user = await _context.Users
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
@@ -40,14 +36,11 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid email or password." });
         }
 
-        // Verify BCrypt password hash
-        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-        if (!isPasswordValid)
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             return Unauthorized(new { message = "Invalid email or password." });
         }
 
-        // Generate JWT token containing identity claims and role
         var token = _tokenService.CreateToken(user);
 
         return Ok(new AuthResponseDto
@@ -57,45 +50,54 @@ public class AuthController : ControllerBase
             FullName = user.FullName,
             Email = user.Email,
             Role = user.Role.Name,
+            MustChangePassword = user.MustChangePassword,
             ExpiresAt = DateTime.UtcNow.AddHours(24)
         });
     }
 
-    /// <summary>
-    /// Admin only: Register a new farm employee with format firstname.lastname@naffbright.com
-    /// </summary>
     [Authorize(Roles = "Admin")]
     [HttpPost("register-employee")]
     public async Task<IActionResult> RegisterEmployee([FromBody] RegisterEmployeeDto request)
     {
-        // Enforce employee email standard: firstname.lastname@naffbright.com
-        var cleanFirst = request.FirstName.Trim().ToLower();
-        var cleanLast = request.LastName.Trim().ToLower();
-        var generatedEmail = $"{cleanFirst}.{cleanLast}@naffbright.com";
+        var rawName = request.FullName.Trim();
+        var nameParts = rawName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        // Check if employee already exists
+        if (nameParts.Length < 2)
+        {
+            return BadRequest(new { message = "Please provide both first and last name (e.g., 'Peter Kamau')." });
+        }
+
+        var firstName = nameParts[0].ToLower();
+        var lastName = nameParts[^1].ToLower();
+        var generatedEmail = $"{firstName}.{lastName}@naffbright.com";
+
         var existingUser = await _context.Users.AnyAsync(u => u.Email == generatedEmail);
         if (existingUser)
         {
-            return BadRequest(new { message = $"An employee with email {generatedEmail} already exists." });
+            // If duplicate exists, append a random 2-digit tag
+            generatedEmail = $"{firstName}.{lastName}{Random.Shared.Next(10, 99)}@naffbright.com";
         }
 
-        // Fetch Employee Role
         var employeeRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Employee");
         if (employeeRole == null)
         {
-            return StatusCode(500, new { message = "Employee role not configured in database." });
+            return StatusCode(500, new { message = "Employee role missing from database." });
         }
+
+        var tempPassword = string.IsNullOrWhiteSpace(request.InitialPassword) 
+            ? "NaffBright#2026" 
+            : request.InitialPassword;
 
         var newEmployee = new User
         {
             Id = Guid.NewGuid(),
-            FullName = $"{request.FirstName.Trim()} {request.LastName.Trim()}",
+            FullName = rawName,
             Email = generatedEmail,
             PhoneNumber = request.PhoneNumber.Trim(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword),
             RoleId = employeeRole.Id,
             IsActive = true,
+            MustChangePassword = true, // Forces prompt on frontend
             CreatedAt = DateTime.UtcNow
         };
 
@@ -104,35 +106,46 @@ public class AuthController : ControllerBase
 
         return Ok(new
         {
-            message = "Employee registered successfully.",
-            employeeId = newEmployee.Id,
-            email = newEmployee.Email,
+            message = "Employee created successfully.",
+            userId = newEmployee.Id,
             fullName = newEmployee.FullName,
-            role = "Employee"
+            generatedEmail = newEmployee.Email,
+            temporaryPassword = tempPassword,
+            mustChangePassword = true,
+            resetUrl = $"http://localhost:5173/dashboard/reset?password=true&userId={newEmployee.Id}"
         });
     }
 
-    /// <summary>
-    /// Retrieve the currently authenticated user's profile
-    /// </summary>
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+    {
+        var userEmail = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrEmpty(userEmail)) return Unauthorized();
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+        if (user == null) return NotFound(new { message = "User not found." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.MustChangePassword = false;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Password updated successfully. You can now use the dashboard." });
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> GetCurrentUser()
     {
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
-        if (string.IsNullOrEmpty(userEmail))
-        {
-            return Unauthorized();
-        }
+        if (string.IsNullOrEmpty(userEmail)) return Unauthorized();
 
         var user = await _context.Users
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email == userEmail);
 
-        if (user == null)
-        {
-            return NotFound(new { message = "User not found." });
-        }
+        if (user == null) return NotFound();
 
         return Ok(new
         {
@@ -140,7 +153,7 @@ public class AuthController : ControllerBase
             fullName = user.FullName,
             email = user.Email,
             role = user.Role.Name,
-            phoneNumber = user.PhoneNumber
+            mustChangePassword = user.MustChangePassword
         });
     }
 }

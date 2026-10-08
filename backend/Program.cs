@@ -1,31 +1,43 @@
-using backend.Data;
 using Microsoft.EntityFrameworkCore;
+using NaffBrightFarm.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<FarmDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("FarmDatabase")));
+// Controllers & Swagger
 builder.Services.AddControllers();
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("Frontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod());
-});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Database Context
+builder.Services.AddDbContext<NaffBrightDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Run Seeder on Startup
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<NaffBrightDbContext>();
+        await DbSeeder.SeedAsync(context);
+        Console.WriteLine("[INFO] Database seeded successfully: Roles and Admin ready.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[ERROR] Error occurred during DB seeding: {ex.Message}");
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseCors("Frontend");
+app.UseHttpsRedirection();
+
 app.UseAuthorization();
 
 app.MapControllers();

@@ -8,13 +8,16 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+
+    // Force reset on first login
+    public bool MustChangePassword { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Foreign Key
     public Guid RoleId { get; set; }
     public Role Role { get; set; } = null!;
 
-    // Navigation properties for employee actions
+    // Navigation properties
     public ICollection<WorkSchedule> WorkSchedules { get; set; } = new List<WorkSchedule>();
     public ICollection<Timesheet> Timesheets { get; set; } = new List<Timesheet>();
     public ICollection<EmployeeMessage> SentMessages { get; set; } = new List<EmployeeMessage>();

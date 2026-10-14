@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { authService } from './AuthService';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = authService.getAuthHeaders();
@@ -92,4 +92,16 @@ export const adminService = {
     request<any>('/Messages', { method: 'POST', body: JSON.stringify(msg) }),
   markMessageRead: (id: string) => 
     request<any>(`/Messages/${id}/read`, { method: 'PATCH' }),
+
+
+    // 9. Employee Managament
+    
+getEmployees: (activeOnly?: boolean) =>
+    request<any[]>(`/Employees${activeOnly !== undefined ? `?activeOnly=${activeOnly}` : ''}`),
+
+  toggleEmployeeStatus: (id: string) =>
+    request<any>(`/Employees/${id}/toggle-status`, { method: 'PATCH' }),
+
+  deleteEmployee: (id: string) =>
+    request<any>(`/Employees/${id}`, { method: 'DELETE' }),
 };

@@ -5,3 +5,11 @@ appsettings.Local.json
 appsettings.*.local.json
 
 .vs/
+# Environment & Local Secrets
+.env
+.env.*
+*.local
+
+# Local Developer AppSettings overrides
+appsettings.Development.json
+appsettings.json

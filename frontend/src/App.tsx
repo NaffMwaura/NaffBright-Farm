@@ -4,10 +4,12 @@ import { ThemeProvider } from './context/ThemeContext';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import ResetPassword from './pages/ResetPassword';
+
+// Layouts
 import AdminLayout from './components/layout/admin/AdminLayout';
 import EmployeeLayout from './components/layout/employee/EmployeeLayout';
 
-// Admin Page Components
+// Admin Pages
 import AdminOverview from './pages/admin/AdminOverview';
 import CowsManagement from './pages/admin/CowsManagement';
 import ProductionAdmin from './pages/admin/ProductionAdmin';
@@ -18,17 +20,15 @@ import ExpensesAdmin from './pages/admin/ExpensesAdmin';
 import StaffManagement from './pages/admin/StaffManagement';
 import StaffMessages from './pages/admin/StaffMessages';
 
-import { authService } from './services/AuthService';
+// Employee Pages
+import EmployeeOverview from './pages/employee/EmployeeOverview';
+import MilkingShiftLog from './pages/employee/MilkingShiftLog';
+import EmployeeHealth from './pages/employee/EmployeeHealth';
+import MyWorkSchedule from './pages/employee/MyWorkSchedule';
+import SubmitTimesheet from './pages/employee/SubmitTimesheet';
+import EmployeeInquiries from './pages/employee/EmployeeInquiries';
 
-// Temporary placeholder for Employee station home
-const EmployeeHome = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-black text-slate-900 dark:text-white">Worker Shift Station</h1>
-    <p className="text-sm text-slate-500 dark:text-slate-400">
-      Today's assigned shift duties, quick milking inputs, and notices.
-    </p>
-  </div>
-);
+import { authService } from './services/AuthService';
 
 // Route Guard
 function ProtectedRoute({ children, allowedRole }: { children: React.ReactNode; allowedRole?: string }) {
@@ -103,7 +103,12 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<EmployeeHome />} />
+            <Route index element={<EmployeeOverview />} />
+            <Route path="milking" element={<MilkingShiftLog />} />
+            <Route path="health" element={<EmployeeHealth />} />
+            <Route path="schedule" element={<MyWorkSchedule />} />
+            <Route path="timesheets" element={<SubmitTimesheet />} />
+            <Route path="messages" element={<EmployeeInquiries />} />
           </Route>
 
           {/* Fallback */}

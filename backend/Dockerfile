@@ -20,4 +20,4 @@ COPY --from=build /app/out ./
 ENV ASPNETCORE_HTTP_PORTS=10000
 EXPOSE 10000
 
-ENTRYPOINT ["dotnet", "NaffBrightFarm.Api.dll"]
+ENTRYPOINT ["dotnet", "backend.dll"]

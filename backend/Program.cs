@@ -7,21 +7,28 @@ using Microsoft.OpenApi.Models;
 using NaffBrightFarm.Api.Data;
 using NaffBrightFarm.Api.Services;
 
+// 1. Load local .env file variables if present (ignored in production)
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Controllers
+// 2. Add Controllers
 builder.Services.AddControllers();
 
-// 2. Register Database Context
-builder.Services.AddDbContext<NaffBrightDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// 3. Register Database Context with Fallback
+// Supports both 'ConnectionStrings__DefaultConnection' and plain 'DefaultConnection'
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                    ?? builder.Configuration["DefaultConnection"]
+                    ?? throw new InvalidOperationException("Database connection string is missing.");
 
-// 3. Register Application Services
+builder.Services.AddDbContext<NaffBrightDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// 4. Register Application Services
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// 4. Configure JWT Authentication
+// 5. Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] 
-    ?? throw new InvalidOperationException("JWT Key is missing in appsettings.json");
+    ?? builder.Configuration["Jwt__Key"]
+    ?? throw new InvalidOperationException("JWT Key is missing.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -35,9 +42,9 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? builder.Configuration["Jwt__Issuer"],
         ValidateAudience = true,
-        ValidAudience = builder.Configuration["Jwt:Audience"],
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration["Jwt__Audience"],
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
@@ -45,19 +52,21 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-
-//Add Cors policy to allow requests from the frontend
+// 6. CORS Policy (Local + Production Origins)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ReactPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(
+                  "http://localhost:5173", 
+                  "https://localhost:5173"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
-// 5. Swagger Setup
+// 7. Swagger Setup
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -92,7 +101,6 @@ app.Use(async (context, next) =>
 {
     var timer = Stopwatch.StartNew();
     
-    // Let the request proceed to the controller
     await next();
     
     timer.Stop();
@@ -102,16 +110,14 @@ app.Use(async (context, next) =>
     var path = context.Request.Path;
     var elapsedMs = timer.ElapsedMilliseconds;
 
-    // Pick color based on status code
     ConsoleColor statusColor = statusCode switch
     {
-        >= 200 and < 300 => ConsoleColor.Cyan,      // 2xx Success (Blue/Cyan)
-        >= 300 and < 400 => ConsoleColor.DarkCyan,  // 3xx Redirects
-        >= 400 and < 500 => ConsoleColor.Yellow,    // 4xx Client Errors
-        _ => ConsoleColor.Red                       // 5xx Server Errors
+        >= 200 and < 300 => ConsoleColor.Cyan,
+        >= 300 and < 400 => ConsoleColor.DarkCyan,
+        >= 400 and < 500 => ConsoleColor.Yellow,
+        _ => ConsoleColor.Red
     };
 
-    // Print to console: [200 OK] POST /api/Auth/login (28ms)
     Console.ForegroundColor = statusColor;
     Console.Write($"[{statusCode}] ");
     Console.ResetColor();
@@ -129,7 +135,7 @@ app.Use(async (context, next) =>
 });
 // -------------------------------------------------------------------
 
-// Run Seeder on Startup
+// Run Database Seeder
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -144,16 +150,13 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger in both Development and Production for testing Render endpoints
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else
-{
-    // Only enforce HTTPS redirect in production (removes the local dev warning)
-    app.UseHttpsRedirection();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "NaffBright Farm API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseCors("ReactPolicy");
 

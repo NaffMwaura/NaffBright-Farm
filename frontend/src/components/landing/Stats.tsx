@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Milk, Sparkles, AlertTriangle, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Milk,  AlertTriangle, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function Stats() {
   const stats = [

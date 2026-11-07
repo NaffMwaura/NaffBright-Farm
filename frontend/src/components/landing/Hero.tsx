@@ -42,6 +42,7 @@ export default function Hero() {
     }
 
     if (isDeleting && subIdx === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDeleting(false);
       setWordIdx((prev) => (prev + 1) % typewriterWords.length);
       return;
@@ -74,7 +75,7 @@ export default function Hero() {
         </AnimatePresence>
 
         {/* Balanced contrast overlay: preserves photo clarity in light & dark mode */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/75 via-white/60 to-white/85 dark:from-slate-950/70 dark:via-slate-950/55 dark:to-slate-950/80 transition-colors duration-300" />
+        <div className="absolute inset-0 bg-linear-to-b from-white/75 via-white/60 to-white/85 dark:from-slate-950/70 dark:via-slate-950/55 dark:to-slate-950/80 transition-colors duration-300" />
       </div>
 
       {/* 2. Symmetrically Centered Content */}
@@ -101,7 +102,7 @@ export default function Hero() {
           Your Source For <br />
           <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-baseline min-h-[1.2em]">
             {typewriterWords[wordIdx].substring(0, subIdx)}
-            <span className="inline-block w-[3px] h-8 sm:h-12 lg:h-14 ml-1 bg-emerald-600 dark:bg-emerald-400 animate-pulse align-middle" />
+            <span className="inline-block w-3px] h-8 sm:h-12 lg:h-14 ml-1 bg-emerald-600 dark:bg-emerald-400 animate-pulse align-middle" />
           </span>
         </motion.h1>
 
@@ -133,7 +134,7 @@ export default function Hero() {
           </motion.a>
 
           <motion.a
-            href="/dashboard"
+            href="/login"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/95 dark:bg-slate-900/95 hover:bg-white dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 font-bold text-base shadow-md backdrop-blur-xs transition-all"

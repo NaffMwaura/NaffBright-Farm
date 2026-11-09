@@ -1,4 +1,3 @@
-// import { motion } from 'framer-motion';
 import { MessageCircle, MapPin, ArrowUpRight } from 'lucide-react';
 import logo from '../../assets/logo.png';
 
